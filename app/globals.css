@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+/* Digitalfeet design tokens (see DESIGN_SYSTEM.md) — registered with Tailwind v4
+   so utilities like bg-cream, text-ink, text-orange-deep, font-heading work. */
+@theme {
+  --color-purple: #1e1242;
+  --color-ink: #131028;
+  --color-orange: #f8a02d;
+  --color-orange-deep: #f37920;
+  --color-blue: #009fe3;
+  --color-cream: #f7f6f2;
+  --color-graybrand: #747474;
+
+  --font-heading: "Ubuntu", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+
+  /* Desktop type scale */
+  --text-h1: 54px;
+  --text-h1--line-height: 76.8px;
+  --text-h2: 48px;
+  --text-h2--line-height: 57.6px;
+  --text-h3: 32px;
+  --text-h3--line-height: 40px;
+  --text-h4: 24px;
+  --text-h4--line-height: 28.8px;
+  --text-h5: 20px;
+  --text-h5--line-height: 28.8px;
+
+  /* Mobile type scale */
+  --text-h1-m: 30px;
+  --text-h1-m--line-height: 36px;
+  --text-h2-m: 27px;
+  --text-h2-m--line-height: 42px;
+  --text-h3-m: 20px;
+  --text-h3-m--line-height: 24px;
+}
+
+/* Brand gradient (Tailwind v4 doesn't emit a gradient color utility). */
+@utility bg-gradient-brand {
+  background-image: linear-gradient(90deg, #f8a02d 0%, #f37920 100%);
+}
+
+html,
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+}
+
+body {
+  font-family: var(--font-body);
+}
