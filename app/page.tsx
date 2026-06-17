@@ -16,7 +16,14 @@ export default function Home() {
         </p>
       </header>
       <CalculatorForm />
-      <footer className="mt-8 text-center">
+      <footer className="mt-8 flex items-center justify-center gap-4 text-center">
+        <a
+          href="/audit"
+          className="text-xs text-graybrand underline-offset-2 hover:text-ink hover:underline"
+        >
+          Free site audit →
+        </a>
+        <span className="text-ink/20">·</span>
         <a
           href="/review"
           className="text-xs text-graybrand underline-offset-2 hover:text-ink hover:underline"
