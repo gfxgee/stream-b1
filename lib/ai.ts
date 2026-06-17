@@ -76,5 +76,6 @@ async function callOpenAI(o: GenOpts): Promise<unknown> {
 // Generates a JSON object matching `schema` from the active provider.
 // Returns the parsed (unvalidated) object — callers validate shape themselves.
 export async function generateJSON(o: GenOpts): Promise<unknown> {
+  console.log(`[ai] provider=${activeProvider()} model=${providerLabel()}`);
   return activeProvider() === "openai" ? callOpenAI(o) : callGemini(o);
 }
