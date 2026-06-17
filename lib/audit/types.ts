@@ -7,6 +7,8 @@ export type AuditFormData = {
   employees: string;
   industry: string;
   language: string;
+  linkedin: string; // optional — LinkedIn company page
+  socials: string; // optional — other social profiles (comma/space separated)
 };
 
 export const INITIAL_AUDIT_FORM: AuditFormData = {
@@ -16,6 +18,8 @@ export const INITIAL_AUDIT_FORM: AuditFormData = {
   employees: "",
   industry: "",
   language: "",
+  linkedin: "",
+  socials: "",
 };
 
 // Employee bands. `qualifies` encodes the "4+ employees" half of the filter.
@@ -52,21 +56,62 @@ export type DominantPattern =
   | "mixed"
   | "quickfix_only";
 
-// The structured audit the model returns.
+export type RecCategory =
+  | "website"
+  | "seo"
+  | "content"
+  | "social"
+  | "linkedin"
+  | "leadgen"
+  | "branding"
+  | "performance"
+  | "campaign";
+
+export type Priority = "high" | "medium" | "low";
+
+export type Recommendation = {
+  title: string; // the action, e.g. "Add a lead-generation section"
+  category: RecCategory;
+  reason: string; // why it matters
+  fix: string; // how to do it
+  priority: Priority;
+};
+
+// Five scored dimensions (0–100) for the chart.
+export type DimensionScores = {
+  website: number;
+  seo: number;
+  content: number;
+  social: number;
+  performance: number;
+};
+
+// The structured audit the model returns — action-oriented, no pricing.
 export type AuditReport = {
   overall_summary: string;
-  web: {
-    findings: { title: string; detail: string; severity: "high" | "medium" | "low" }[];
-  };
-  marketing: {
-    audience_read: string;
-    positioning_gap: string;
-    marketing_footprint: string;
-    competitor_stance: string;
-  };
+  dimension_scores: DimensionScores;
+  recommendations: Recommendation[];
   dominant_pattern: DominantPattern;
-  top_recommendations: string[];
-  rationale: string;
+};
+
+export const REC_CATEGORY_LABEL: Record<RecCategory, string> = {
+  website: "Website",
+  seo: "SEO",
+  content: "Content",
+  social: "Social",
+  linkedin: "LinkedIn",
+  leadgen: "Lead gen",
+  branding: "Branding",
+  performance: "Performance",
+  campaign: "Campaign",
+};
+
+export const DIMENSION_LABEL: Record<keyof DimensionScores, string> = {
+  website: "Website",
+  seo: "SEO",
+  content: "Content",
+  social: "Social media",
+  performance: "Performance",
 };
 
 // Raw scanner output passed to the model and stored for debugging.

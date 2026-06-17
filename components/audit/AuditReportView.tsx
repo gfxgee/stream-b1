@@ -2,13 +2,21 @@
 
 import { motion, type Variants } from "framer-motion";
 import type { Cta } from "@/lib/audit/cta";
-import type { AuditReport, DominantPattern, ScanResult } from "@/lib/audit/types";
+import {
+  DIMENSION_LABEL,
+  REC_CATEGORY_LABEL,
+  type AuditReport,
+  type DimensionScores,
+  type DominantPattern,
+  type Priority,
+  type ScanResult,
+} from "@/lib/audit/types";
 
 type ScanSummary = Pick<ScanResult, "reachable" | "pageSpeed" | "seo" | "links" | "tech">;
 
 const container: Variants = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.08 } },
+  show: { transition: { staggerChildren: 0.07 } },
 };
 const item: Variants = {
   hidden: { opacity: 0, y: 12 },
@@ -22,26 +30,48 @@ const PATTERN_LABEL: Record<DominantPattern, string> = {
   quickfix_only: "Quick fixes only",
 };
 
-const SEVERITY: Record<string, string> = {
+const PRIORITY_STYLE: Record<Priority, string> = {
   high: "border-red-300 bg-red-50 text-red-700",
   medium: "border-orange/40 bg-orange/10 text-orange-deep",
-  low: "border-ink/15 bg-cream text-ink",
+  low: "border-ink/15 bg-cream text-graybrand",
 };
+const PRIORITY_RANK: Record<Priority, number> = { high: 0, medium: 1, low: 2 };
 
-function scoreColor(score: number | null): string {
-  if (score == null) return "text-graybrand";
-  if (score >= 90) return "text-emerald-600";
-  if (score >= 50) return "text-orange-deep";
-  return "text-red-600";
+function clampScore(n: number): number {
+  return Math.max(0, Math.min(100, Math.round(n)));
 }
 
-function ScoreChip({ label, score }: { label: string; score: number | null }) {
+function barColor(score: number): string {
+  if (score >= 70) return "bg-emerald-500";
+  if (score >= 45) return "bg-orange-deep";
+  return "bg-red-500";
+}
+
+function DimensionBars({ scores }: { scores: DimensionScores }) {
+  const keys = Object.keys(DIMENSION_LABEL) as (keyof DimensionScores)[];
   return (
-    <div className="rounded-xl border border-ink/10 bg-white p-3 text-center">
-      <p className={`font-heading text-h3-m font-bold ${scoreColor(score)}`}>
-        {score == null ? "—" : score}
-      </p>
-      <p className="mt-0.5 text-[11px] font-medium text-graybrand">{label}</p>
+    <div className="flex flex-col gap-2.5">
+      {keys.map((k) => {
+        const score = clampScore(scores[k] ?? 0);
+        return (
+          <div key={k} className="flex items-center gap-3">
+            <span className="w-24 shrink-0 text-xs font-medium text-graybrand">
+              {DIMENSION_LABEL[k]}
+            </span>
+            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-ink/10">
+              <motion.div
+                className={`h-full rounded-full ${barColor(score)}`}
+                initial={{ width: 0 }}
+                animate={{ width: `${score}%` }}
+                transition={{ duration: 0.7, ease: "easeOut" }}
+              />
+            </div>
+            <span className="w-8 shrink-0 text-right text-sm font-semibold tabular-nums text-ink">
+              {score}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -61,8 +91,10 @@ export default function AuditReportView({
   persisted: boolean;
   onReset: () => void;
 }) {
+  const recs = [...report.recommendations].sort(
+    (a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]
+  );
   const psi = scan?.pageSpeed;
-  const marketing = report.marketing;
 
   return (
     <motion.section
@@ -71,10 +103,10 @@ export default function AuditReportView({
       animate="show"
       className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm sm:p-7"
     >
-      <motion.div variants={item} className="flex flex-wrap items-center justify-between gap-3">
+      <motion.div variants={item} className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-heading text-sm font-medium tracking-wide text-orange-deep">
-            Audit report · {company}
+            Website audit · {company}
           </p>
           <h2 className="mt-1 font-heading text-h3-m font-bold text-ink sm:text-h3">
             Your diagnostic
@@ -89,72 +121,51 @@ export default function AuditReportView({
         {report.overall_summary}
       </motion.p>
 
-      {/* PageSpeed scores */}
-      {psi?.available ? (
-        <motion.div variants={item} className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <ScoreChip label="Performance" score={psi.performance} />
-          <ScoreChip label="SEO" score={psi.seo} />
-          <ScoreChip label="Accessibility" score={psi.accessibility} />
-          <ScoreChip label="Best practices" score={psi.bestPractices} />
-        </motion.div>
-      ) : (
-        <motion.p variants={item} className="mt-4 text-xs text-graybrand">
-          PageSpeed Insights data wasn&apos;t available for this URL.
-        </motion.p>
-      )}
+      {/* Dimension scores chart */}
+      <motion.div variants={item} className="mt-6 rounded-xl border border-ink/10 bg-cream p-4">
+        <p className="mb-3 text-xs font-semibold text-graybrand">Dimension scores (out of 100)</p>
+        <DimensionBars scores={report.dimension_scores} />
+        {psi?.available && (
+          <p className="mt-3 text-[11px] text-graybrand">
+            Measured by PageSpeed Insights (mobile): performance {psi.performance ?? "—"},
+            SEO {psi.seo ?? "—"}, accessibility {psi.accessibility ?? "—"}.
+          </p>
+        )}
+      </motion.div>
 
-      {/* Web findings */}
+      {/* Recommended actions */}
       <motion.div variants={item} className="mt-6">
         <h3 className="font-heading text-h3-m font-bold text-ink sm:text-h4">
-          Website findings
+          Recommended actions
         </h3>
-        <ul className="mt-3 flex flex-col gap-2.5">
-          {report.web.findings.map((f, i) => (
-            <li key={i} className={`rounded-lg border p-3 ${SEVERITY[f.severity] ?? SEVERITY.low}`}>
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-semibold">{f.title}</p>
-                <span className="text-[10px] font-bold uppercase tracking-wide opacity-70">
-                  {f.severity}
+        <div className="mt-3 flex flex-col gap-2.5">
+          {recs.map((r, i) => (
+            <div
+              key={i}
+              className="rounded-lg border border-ink/10 bg-white p-3.5 transition hover:border-ink/20"
+            >
+              <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                <span className="rounded-full bg-blue/10 px-2.5 py-0.5 text-[11px] font-medium text-blue">
+                  {REC_CATEGORY_LABEL[r.category]}
+                </span>
+                <span
+                  className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold capitalize ${PRIORITY_STYLE[r.priority]}`}
+                >
+                  {r.priority}
                 </span>
               </div>
-              <p className="mt-1 text-sm opacity-90">{f.detail}</p>
-            </li>
-          ))}
-        </ul>
-      </motion.div>
-
-      {/* Marketing posture */}
-      <motion.div variants={item} className="mt-6">
-        <h3 className="font-heading text-h3-m font-bold text-ink sm:text-h4">
-          Marketing posture
-        </h3>
-        <dl className="mt-3 grid gap-3 sm:grid-cols-2">
-          {[
-            ["Audience read", marketing.audience_read],
-            ["Positioning gap", marketing.positioning_gap],
-            ["Marketing footprint", marketing.marketing_footprint],
-            ["Competitor stance", marketing.competitor_stance],
-          ].map(([label, value]) => (
-            <div key={label} className="rounded-lg border border-ink/10 bg-cream p-3">
-              <dt className="text-xs font-semibold text-graybrand">{label}</dt>
-              <dd className="mt-1 text-sm text-ink/90">{value}</dd>
+              <p className="text-sm font-semibold text-ink">{r.title}</p>
+              <p className="mt-1 text-sm leading-relaxed text-ink/90">
+                <span className="text-graybrand">Why: </span>
+                {r.reason}
+              </p>
+              <p className="mt-0.5 text-sm leading-relaxed text-ink/90">
+                <span className="text-graybrand">Fix: </span>
+                {r.fix}
+              </p>
             </div>
           ))}
-        </dl>
-      </motion.div>
-
-      {/* Recommendations */}
-      <motion.div variants={item} className="mt-6">
-        <h3 className="font-heading text-h3-m font-bold text-ink sm:text-h4">
-          Top recommendations
-        </h3>
-        <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm text-ink/90">
-          {report.top_recommendations.map((r, i) => (
-            <li key={i} className="leading-relaxed">
-              {r}
-            </li>
-          ))}
-        </ol>
+        </div>
       </motion.div>
 
       {/* Detected tech */}
@@ -171,7 +182,7 @@ export default function AuditReportView({
         </motion.div>
       )}
 
-      {/* Primary CTA from the routing matrix */}
+      {/* Primary CTA from the routing matrix — no pricing here */}
       <motion.div
         variants={item}
         className="mt-7 rounded-xl border border-orange/40 bg-orange/10 p-4"

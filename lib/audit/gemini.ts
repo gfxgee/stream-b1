@@ -5,71 +5,78 @@ const MODEL = "gemini-2.5-flash";
 
 export const isGeminiConfigured = Boolean(process.env.GEMINI_API_KEY);
 
-const SYSTEM_INSTRUCTION = `You are the diagnostic engine for Digitalfeet's website + marketing Audit. A prospect submitted their site for a free, single-tier audit. There is NO manual review — your output ships as-is, so be accurate, specific, and useful.
+const SYSTEM_INSTRUCTION = `You are the diagnostic engine for Digitalfeet's free Website Audit. A prospect submitted their site. There is NO manual review — your output ships as-is, so be accurate, specific, and actionable.
 
-You are given (a) the prospect's details and (b) machine scan signals: PageSpeed Insights scores, on-page SEO facts, a broken-link sample, and detected tech. Ground every WEB finding in those signals — cite concrete numbers (scores, counts). Do not invent metrics you weren't given.
+This is an AUDIT, not a project plan or quote. NEVER mention price, cost, budget, hours, or estimates — pricing lives in a separate tool. Your job is insight + concrete recommended actions.
 
-For MARKETING posture, you only have the site's own text and tech (no LinkedIn/Semrush/competitor data in this version). Infer cautiously from what's present and SAY when a read is limited or speculative — never fabricate competitor names, follower counts, or campaigns.
+Cover these areas: website (speed, meta, structure, UX), SEO, content, social media, and LinkedIn, plus lead generation and branding where relevant.
 
-Classify the dominant_pattern:
-- "website": problems are mostly technical/site quality (performance, SEO, broken links, UX).
-- "marketing": the site is technically fine but positioning/audience/marketing footprint is weak.
+INPUTS you get: prospect details, and machine scan signals (PageSpeed Insights scores, on-page SEO facts, a broken-link sample, detected tech). Ground WEB/SEO/performance points in those signals — cite concrete numbers. For LinkedIn/social you only have the URLs the prospect supplied (no live scraping in this version); infer cautiously from those and the site, and SAY when a read is limited. Never fabricate follower counts, competitor names, or campaigns.
+
+Produce TWO things:
+1. dimension_scores: score each of website, seo, content, social, performance from 0–100 (higher = healthier), informed by the signals. Use the PageSpeed performance score directly for "performance" when available.
+2. recommendations: 5–8 concrete actions. EACH must have: a short action title (e.g. "Add a lead-generation section"), a category, a one-sentence reason (why it matters), a one-sentence fix (what to do), and a priority. Order the most important first. Mirror the style of: "Rebrand homepage", "Restructure website", "Fix meta tags", "Fix social media", "Slow site speed", "Make a knowledge page", "Run a campaign".
+
+Also classify dominant_pattern:
+- "website": problems mostly technical/site quality.
+- "marketing": site is fine but positioning/social/content is weak.
 - "mixed": meaningful problems on both sides.
-- "quickfix_only": basically healthy; only small, isolated fixes needed.
+- "quickfix_only": basically healthy; only small isolated fixes.
 
-Keep findings concrete and prioritized. Return ONLY JSON matching the schema.`;
+Write everything in the requested report language. Return ONLY JSON matching the schema.`;
 
 const RESPONSE_SCHEMA = {
   type: Type.OBJECT,
   properties: {
     overall_summary: { type: Type.STRING },
-    web: {
+    dimension_scores: {
       type: Type.OBJECT,
       properties: {
-        findings: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              title: { type: Type.STRING },
-              detail: { type: Type.STRING },
-              severity: { type: Type.STRING, enum: ["high", "medium", "low"] },
-            },
-            required: ["title", "detail", "severity"],
-          },
-        },
+        website: { type: Type.INTEGER },
+        seo: { type: Type.INTEGER },
+        content: { type: Type.INTEGER },
+        social: { type: Type.INTEGER },
+        performance: { type: Type.INTEGER },
       },
-      required: ["findings"],
+      required: ["website", "seo", "content", "social", "performance"],
     },
-    marketing: {
-      type: Type.OBJECT,
-      properties: {
-        audience_read: { type: Type.STRING },
-        positioning_gap: { type: Type.STRING },
-        marketing_footprint: { type: Type.STRING },
-        competitor_stance: { type: Type.STRING },
+    recommendations: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          title: { type: Type.STRING },
+          category: {
+            type: Type.STRING,
+            enum: [
+              "website",
+              "seo",
+              "content",
+              "social",
+              "linkedin",
+              "leadgen",
+              "branding",
+              "performance",
+              "campaign",
+            ],
+          },
+          reason: { type: Type.STRING },
+          fix: { type: Type.STRING },
+          priority: { type: Type.STRING, enum: ["high", "medium", "low"] },
+        },
+        required: ["title", "category", "reason", "fix", "priority"],
       },
-      required: [
-        "audience_read",
-        "positioning_gap",
-        "marketing_footprint",
-        "competitor_stance",
-      ],
     },
     dominant_pattern: {
       type: Type.STRING,
       enum: ["website", "marketing", "mixed", "quickfix_only"],
     },
-    top_recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
-    rationale: { type: Type.STRING },
   },
   required: [
     "overall_summary",
-    "web",
-    "marketing",
+    "dimension_scores",
+    "recommendations",
     "dominant_pattern",
-    "top_recommendations",
-    "rationale",
   ],
 };
 
@@ -81,6 +88,8 @@ function buildPrompt(data: AuditFormData, scan: ScanResult): string {
     `Team size: ${data.employees}`,
     `Report language: ${data.language}`,
     `URL: ${scan.fetchedUrl} (reachable: ${scan.reachable})`,
+    `LinkedIn: ${data.linkedin || "(not provided)"}`,
+    `Other socials: ${data.socials || "(not provided)"}`,
     "",
     "SCAN SIGNALS (JSON):",
     JSON.stringify(
@@ -103,12 +112,10 @@ function isValidReport(v: unknown): v is AuditReport {
   const patterns = ["website", "marketing", "mixed", "quickfix_only"];
   return (
     typeof r.overall_summary === "string" &&
-    typeof r.web === "object" &&
-    Array.isArray((r.web as { findings?: unknown }).findings) &&
-    typeof r.marketing === "object" &&
-    patterns.includes(r.dominant_pattern as string) &&
-    Array.isArray(r.top_recommendations) &&
-    typeof r.rationale === "string"
+    typeof r.dimension_scores === "object" &&
+    r.dimension_scores !== null &&
+    Array.isArray(r.recommendations) &&
+    patterns.includes(r.dominant_pattern as string)
   );
 }
 

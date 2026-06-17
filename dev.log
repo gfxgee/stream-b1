@@ -1,0 +1,22 @@
+
+> df-calculator-poc@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.5.19
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.100.19:3000
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 14.5s
+ ○ Compiling / ...
+ ✓ Compiled / in 2.1s (1700 modules)
+ GET / 200 in 4441ms
+ ○ Compiling /api/audit ...
+ ✓ Compiled /api/audit in 1879ms (2168 modules)
+Supabase audit insert failed: Could not find the 'linkedin' column of 'audits' in the schema cache
+ POST /api/audit 200 in 18565ms
+ ○ Compiling /audit ...
+ ✓ Compiled /audit in 601ms (1528 modules)
+ GET /audit 200 in 1009ms
+ ✓ Compiled /api/audit in 246ms (1195 modules)

@@ -175,6 +175,36 @@ export default function AuditForm() {
             onChange={(e) => update({ language: e.target.value })}
           />
         </Field>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field
+            label="LinkedIn page (optional)"
+            htmlFor="audit-linkedin"
+            error={errors.linkedin}
+          >
+            <TextInput
+              id="audit-linkedin"
+              type="url"
+              inputMode="url"
+              value={data.linkedin}
+              error={errors.linkedin}
+              onChange={(e) => update({ linkedin: e.target.value })}
+              placeholder="https://linkedin.com/company/…"
+            />
+          </Field>
+          <Field
+            label="Other socials (optional)"
+            htmlFor="audit-socials"
+            error={errors.socials}
+          >
+            <TextInput
+              id="audit-socials"
+              value={data.socials}
+              error={errors.socials}
+              onChange={(e) => update({ socials: e.target.value })}
+              placeholder="instagram, facebook, x…"
+            />
+          </Field>
+        </div>
       </div>
 
       {submitError && (

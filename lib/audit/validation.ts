@@ -29,6 +29,9 @@ export function validateAuditForm(data: AuditFormData): AuditErrors {
   if (!data.employees) errors.employees = "Please pick a team size.";
   if (!data.industry) errors.industry = "Please pick an industry.";
   if (!data.language) errors.language = "Please pick a language.";
+  // LinkedIn is optional, but must look like a URL if provided.
+  if (data.linkedin.trim() && !isValidUrl(data.linkedin.trim()))
+    errors.linkedin = "That doesn't look like a valid URL.";
   return errors;
 }
 

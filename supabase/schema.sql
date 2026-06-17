@@ -32,6 +32,8 @@ create table if not exists audits (
   employees text,
   industry text,
   language text,
+  linkedin text,               -- optional LinkedIn company page
+  socials text,                -- optional other social profiles
   origin text,                 -- page-of-origin, drives the CTA routing matrix
   qualified boolean,           -- passed the silent qualifier (4+ employees, IT industry)
   rejection_reason text,       -- set when not qualified

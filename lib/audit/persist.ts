@@ -26,6 +26,8 @@ export async function persistAudit(args: PersistArgs): Promise<boolean> {
     employees: data.employees || null,
     industry: data.industry || null,
     language: data.language || null,
+    linkedin: data.linkedin || null,
+    socials: data.socials || null,
     origin,
     qualified,
     rejection_reason: rejectionReason ?? null,
