@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { generateAudit, isGeminiConfigured } from "@/lib/audit/gemini";
+import { generateAudit, isAiConfigured } from "@/lib/audit/gemini";
 import { runScan } from "@/lib/audit/scan";
 import { normalizeOrigin, resolveCta } from "@/lib/audit/cta";
 import { persistAudit } from "@/lib/audit/persist";
@@ -49,11 +49,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ qualified: false, reason });
   }
 
-  if (!isGeminiConfigured) {
+  if (!isAiConfigured()) {
     return NextResponse.json(
       {
         error:
-          "AI is not configured yet. Add GEMINI_API_KEY to .env.local to run audits.",
+          "AI is not configured yet. Set AI_PROVIDER and the matching API key in .env.local.",
       },
       { status: 503 }
     );

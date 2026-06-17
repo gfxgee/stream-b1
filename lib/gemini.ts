@@ -1,5 +1,5 @@
-import { GoogleGenAI, Type } from "@google/genai";
 import type { FormData } from "./types";
+import { generateJSON, isAiConfigured } from "./ai";
 
 // The structured plan the model must return (spec §7).
 export type GeneratedPlan = {
@@ -11,9 +11,8 @@ export type GeneratedPlan = {
   rationale: string;
 };
 
-const MODEL = "gemini-2.5-flash";
-
-export const isGeminiConfigured = Boolean(process.env.GEMINI_API_KEY);
+// Re-export so existing imports keep working; now provider-aware.
+export { isAiConfigured };
 
 const SYSTEM_INSTRUCTION = `You are the project-planning assistant for Digitalfeet, a Norwegian web and digital agency. A prospective client has described their situation through a short form. Produce a concise, concrete project plan and an honest price range in Norwegian kroner (NOK).
 
@@ -32,28 +31,22 @@ Give a one-sentence rationale for the recommendation.
 
 Return ONLY JSON matching the provided schema.`;
 
+// Provider-neutral JSON Schema (works for both Gemini and OpenAI strict mode).
 const RESPONSE_SCHEMA = {
-  type: Type.OBJECT,
+  type: "object",
+  additionalProperties: false,
   properties: {
-    price_min: { type: Type.INTEGER },
-    price_max: { type: Type.INTEGER },
-    currency: { type: Type.STRING },
-    plan_markdown: { type: Type.STRING },
+    price_min: { type: "integer" },
+    price_max: { type: "integer" },
+    currency: { type: "string" },
+    plan_markdown: { type: "string" },
     recommended_path: {
-      type: Type.STRING,
+      type: "string",
       enum: ["email_plan", "book_maia", "dig_deeper"],
     },
-    rationale: { type: Type.STRING },
+    rationale: { type: "string" },
   },
   required: [
-    "price_min",
-    "price_max",
-    "currency",
-    "plan_markdown",
-    "recommended_path",
-    "rationale",
-  ],
-  propertyOrdering: [
     "price_min",
     "price_max",
     "currency",
@@ -117,28 +110,17 @@ function normalizePlan(plan: GeneratedPlan): GeneratedPlan {
 }
 
 async function callModel(
-  ai: GoogleGenAI,
   data: FormData,
   siteText: string | null
 ): Promise<{ plan: GeneratedPlan; raw: unknown }> {
-  const res = await ai.models.generateContent({
-    model: MODEL,
-    contents: buildUserPrompt(data, siteText),
-    config: {
-      systemInstruction: SYSTEM_INSTRUCTION,
-      responseMimeType: "application/json",
-      responseSchema: RESPONSE_SCHEMA,
-      temperature: 0.6,
-      // Disable "thinking" so the entire token budget goes to the JSON answer
-      // (otherwise thinking tokens can truncate the response). Keeps latency low.
-      thinkingConfig: { thinkingBudget: 0 },
-      maxOutputTokens: 2048,
-    },
+  const parsed = await generateJSON({
+    system: SYSTEM_INSTRUCTION,
+    user: buildUserPrompt(data, siteText),
+    schema: RESPONSE_SCHEMA,
+    schemaName: "project_plan",
+    temperature: 0.6,
+    maxOutputTokens: 2048,
   });
-
-  const text = res.text;
-  if (!text) throw new Error("Empty response from model.");
-  const parsed = JSON.parse(text) as unknown;
   if (!isValidPlan(parsed)) {
     throw new Error("Model returned JSON that did not match the plan schema.");
   }
@@ -150,14 +132,11 @@ export async function generatePlan(
   data: FormData,
   siteText: string | null
 ): Promise<{ plan: GeneratedPlan; raw: unknown }> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY is not configured.");
-  const ai = new GoogleGenAI({ apiKey });
-
+  if (!isAiConfigured()) throw new Error("AI provider is not configured.");
   try {
-    return await callModel(ai, data, siteText);
+    return await callModel(data, siteText);
   } catch (firstErr) {
-    console.warn("Gemini first attempt failed, retrying once:", firstErr);
-    return await callModel(ai, data, siteText);
+    console.warn("Plan: first attempt failed, retrying once:", firstErr);
+    return await callModel(data, siteText);
   }
 }

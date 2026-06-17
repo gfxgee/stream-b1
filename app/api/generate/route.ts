@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { generatePlan, isGeminiConfigured } from "@/lib/gemini";
+import { generatePlan, isAiConfigured } from "@/lib/gemini";
 import { fetchUrlText } from "@/lib/scrape";
 import { persistLeadAndPlan } from "@/lib/persist";
 import { validateAll } from "@/lib/validation";
@@ -58,11 +58,11 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!isGeminiConfigured) {
+  if (!isAiConfigured()) {
     return NextResponse.json(
       {
         error:
-          "AI is not configured yet. Add GEMINI_API_KEY to .env.local to generate plans.",
+          "AI is not configured yet. Set AI_PROVIDER and the matching API key in .env.local.",
       },
       { status: 503 }
     );

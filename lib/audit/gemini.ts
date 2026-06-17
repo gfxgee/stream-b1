@@ -1,9 +1,8 @@
-import { GoogleGenAI, Type } from "@google/genai";
 import type { AuditFormData, AuditReport, ScanResult } from "./types";
+import { generateJSON, isAiConfigured } from "@/lib/ai";
 
-const MODEL = "gemini-2.5-flash";
-
-export const isGeminiConfigured = Boolean(process.env.GEMINI_API_KEY);
+// Re-export so existing imports keep working; now provider-aware.
+export { isAiConfigured };
 
 const SYSTEM_INSTRUCTION = `You are the diagnostic engine for Digitalfeet's free Website Audit. A prospect submitted their site. There is NO manual review — your output ships as-is, so be accurate, specific, and actionable.
 
@@ -25,29 +24,33 @@ Also classify dominant_pattern:
 
 Write everything in the requested report language. Return ONLY JSON matching the schema.`;
 
+// Provider-neutral JSON Schema (works for both Gemini and OpenAI strict mode).
 const RESPONSE_SCHEMA = {
-  type: Type.OBJECT,
+  type: "object",
+  additionalProperties: false,
   properties: {
-    overall_summary: { type: Type.STRING },
+    overall_summary: { type: "string" },
     dimension_scores: {
-      type: Type.OBJECT,
+      type: "object",
+      additionalProperties: false,
       properties: {
-        website: { type: Type.INTEGER },
-        seo: { type: Type.INTEGER },
-        content: { type: Type.INTEGER },
-        social: { type: Type.INTEGER },
-        performance: { type: Type.INTEGER },
+        website: { type: "integer" },
+        seo: { type: "integer" },
+        content: { type: "integer" },
+        social: { type: "integer" },
+        performance: { type: "integer" },
       },
       required: ["website", "seo", "content", "social", "performance"],
     },
     recommendations: {
-      type: Type.ARRAY,
+      type: "array",
       items: {
-        type: Type.OBJECT,
+        type: "object",
+        additionalProperties: false,
         properties: {
-          title: { type: Type.STRING },
+          title: { type: "string" },
           category: {
-            type: Type.STRING,
+            type: "string",
             enum: [
               "website",
               "seo",
@@ -60,15 +63,15 @@ const RESPONSE_SCHEMA = {
               "campaign",
             ],
           },
-          reason: { type: Type.STRING },
-          fix: { type: Type.STRING },
-          priority: { type: Type.STRING, enum: ["high", "medium", "low"] },
+          reason: { type: "string" },
+          fix: { type: "string" },
+          priority: { type: "string", enum: ["high", "medium", "low"] },
         },
         required: ["title", "category", "reason", "fix", "priority"],
       },
     },
     dominant_pattern: {
-      type: Type.STRING,
+      type: "string",
       enum: ["website", "marketing", "mixed", "quickfix_only"],
     },
   },
@@ -120,25 +123,17 @@ function isValidReport(v: unknown): v is AuditReport {
 }
 
 async function callModel(
-  ai: GoogleGenAI,
   data: AuditFormData,
   scan: ScanResult
 ): Promise<AuditReport> {
-  const res = await ai.models.generateContent({
-    model: MODEL,
-    contents: buildPrompt(data, scan),
-    config: {
-      systemInstruction: SYSTEM_INSTRUCTION,
-      responseMimeType: "application/json",
-      responseSchema: RESPONSE_SCHEMA,
-      temperature: 0.5,
-      thinkingConfig: { thinkingBudget: 0 },
-      maxOutputTokens: 2048,
-    },
+  const parsed = await generateJSON({
+    system: SYSTEM_INSTRUCTION,
+    user: buildPrompt(data, scan),
+    schema: RESPONSE_SCHEMA,
+    schemaName: "website_audit",
+    temperature: 0.5,
+    maxOutputTokens: 2048,
   });
-  const text = res.text;
-  if (!text) throw new Error("Empty response from model.");
-  const parsed = JSON.parse(text) as unknown;
   if (!isValidReport(parsed))
     throw new Error("Model returned JSON that did not match the audit schema.");
   return parsed;
@@ -149,13 +144,11 @@ export async function generateAudit(
   data: AuditFormData,
   scan: ScanResult
 ): Promise<AuditReport> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY is not configured.");
-  const ai = new GoogleGenAI({ apiKey });
+  if (!isAiConfigured()) throw new Error("AI provider is not configured.");
   try {
-    return await callModel(ai, data, scan);
+    return await callModel(data, scan);
   } catch (firstErr) {
-    console.warn("Audit first attempt failed, retrying once:", firstErr);
-    return await callModel(ai, data, scan);
+    console.warn("Audit: first attempt failed, retrying once:", firstErr);
+    return await callModel(data, scan);
   }
 }
