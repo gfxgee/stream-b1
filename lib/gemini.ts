@@ -16,6 +16,8 @@ export { isAiConfigured };
 
 const SYSTEM_INSTRUCTION = `You are the project-planning assistant for Digitalfeet, a Norwegian web and digital agency. A prospective client has described their situation through a short form. Produce a concise, concrete project plan and an honest price range in Norwegian kroner (NOK).
 
+LANGUAGE: Always write plan_markdown and rationale in ENGLISH, even if the client's description is written in Norwegian or any other language. Only the currency stays NOK.
+
 Price anchoring — bound your range roughly by these two reference products:
 - "Quick Launch" ≈ 60,000 NOK (~80 hours): a focused, mostly template-driven site or launch.
 - "Custom Build" ≈ 110,000 NOK (~150 hours): a bespoke, custom-designed build.
@@ -29,7 +31,7 @@ Recommend exactly one path:
 - "dig_deeper": the brief is vague or early-stage; they should explore/refine before committing.
 Give a one-sentence rationale for the recommendation.
 
-Return ONLY JSON matching the provided schema.`;
+Return ONLY JSON matching the provided schema, with plan_markdown and rationale written in English.`;
 
 // Provider-neutral JSON Schema (works for both Gemini and OpenAI strict mode).
 const RESPONSE_SCHEMA = {
