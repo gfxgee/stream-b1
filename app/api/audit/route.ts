@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "AI is not configured yet. Set AI_PROVIDER and the matching API key in .env.local.",
+          "AI is not configured yet. Set AI_PROVIDER and the matching API key in your environment variables.",
       },
       { status: 503 }
     );
@@ -67,7 +67,10 @@ export async function POST(request: Request) {
   } catch (err) {
     console.error("Audit generation failed:", err);
     return NextResponse.json(
-      { error: "We couldn't generate your audit right now. Please try again." },
+      {
+        error: "We couldn't generate your audit right now. Please try again.",
+        detail: err instanceof Error ? err.message : String(err),
+      },
       { status: 502 }
     );
   }

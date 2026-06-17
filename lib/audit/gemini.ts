@@ -132,7 +132,7 @@ async function callModel(
     schema: RESPONSE_SCHEMA,
     schemaName: "website_audit",
     temperature: 0.5,
-    maxOutputTokens: 2048,
+    maxOutputTokens: 4096,
   });
   if (!isValidReport(parsed))
     throw new Error("Model returned JSON that did not match the audit schema.");

@@ -68,8 +68,15 @@ async function callOpenAI(o: GenOpts): Promise<unknown> {
     temperature: o.temperature ?? 0.6,
     max_completion_tokens: o.maxOutputTokens ?? 2048,
   });
-  const text = res.choices[0]?.message?.content;
-  if (!text) throw new Error("Empty response from OpenAI.");
+  const choice = res.choices[0];
+  if (choice?.finish_reason === "length") {
+    throw new Error(
+      "OpenAI response was truncated (raise max_completion_tokens / shorten the prompt)."
+    );
+  }
+  const text = choice?.message?.content;
+  if (!text)
+    throw new Error(`Empty response from OpenAI (finish_reason=${choice?.finish_reason}).`);
   return JSON.parse(text);
 }
 

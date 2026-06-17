@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "AI is not configured yet. Set AI_PROVIDER and the matching API key in .env.local.",
+          "AI is not configured yet. Set AI_PROVIDER and the matching API key in your environment variables.",
       },
       { status: 503 }
     );
