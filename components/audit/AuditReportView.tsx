@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { motion, type Variants } from "framer-motion";
 import type { Cta } from "@/lib/audit/cta";
 import {
@@ -81,6 +82,7 @@ export default function AuditReportView({
   cta,
   scan,
   company,
+  url,
   persisted,
   onReset,
 }: {
@@ -88,13 +90,47 @@ export default function AuditReportView({
   cta: Cta;
   scan: ScanSummary | null;
   company: string;
+  url?: string;
   persisted: boolean;
   onReset: () => void;
 }) {
+  const [downloading, setDownloading] = useState(false);
   const recs = [...report.recommendations].sort(
     (a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]
   );
   const psi = scan?.pageSpeed;
+
+  async function downloadPptx() {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      const res = await fetch("/api/audit/pptx", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          company,
+          url,
+          report,
+          scan: scan ? { pageSpeed: scan.pageSpeed, tech: scan.tech } : null,
+          cta: { label: cta.label, sub: cta.sub },
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to generate PPTX.");
+      const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objUrl;
+      a.download = `website-audit-${company || "site"}.pptx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objUrl);
+    } catch {
+      // Non-fatal — keep the on-screen report usable.
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   return (
     <motion.section
@@ -192,6 +228,14 @@ export default function AuditReportView({
       </motion.div>
 
       <motion.div variants={item} className="mt-6 flex flex-wrap items-center gap-3 print:hidden">
+        <button
+          type="button"
+          onClick={downloadPptx}
+          disabled={downloading}
+          className="bg-gradient-brand rounded-full px-5 py-2.5 text-sm font-semibold text-ink transition hover:opacity-90 disabled:opacity-60"
+        >
+          {downloading ? "Preparing…" : "Download as PPTX"}
+        </button>
         <button
           type="button"
           onClick={() => window.print()}

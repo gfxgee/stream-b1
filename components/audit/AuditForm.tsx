@@ -103,6 +103,7 @@ export default function AuditForm() {
         cta={cta}
         scan={scan}
         company={data.company}
+        url={data.url}
         persisted={persisted}
         onReset={reset}
       />
