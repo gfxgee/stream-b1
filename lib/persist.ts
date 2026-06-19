@@ -9,7 +9,10 @@ export type PersistResult = { leadId: string | null; persisted: boolean };
 export async function persistLeadAndPlan(
   data: FormData,
   path: ChosenPath,
-  plan: GeneratedPlan | null
+  plan: GeneratedPlan | null,
+  // Formatted Maia briefing note — null for price_only leads (no call is booked)
+  // or when generation failed. Stored in plans.maia_prompt for Romeo to trigger.
+  maiaBrief: string | null = null
 ): Promise<PersistResult> {
   if (!isSupabaseConfigured) return { leadId: null, persisted: false };
   const supabase = getSupabase()!;
@@ -44,6 +47,9 @@ export async function persistLeadAndPlan(
       currency: plan.currency,
       plan_markdown: plan.plan_markdown,
       raw_json: plan,
+      // Stored as plain text so Make.com can read and forward it directly.
+      // Null for price_only leads — no Stage 1 call is booked.
+      maia_prompt: maiaBrief ?? null,
     });
     if (planError) {
       // Lead is already saved; a missing plan row shouldn't fail the request.
