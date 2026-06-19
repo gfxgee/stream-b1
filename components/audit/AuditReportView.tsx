@@ -227,7 +227,14 @@ export default function AuditReportView({
         <p className="mt-0.5 text-sm text-graybrand">{cta.sub}</p>
       </motion.div>
 
-      <motion.div variants={item} className="mt-6 flex flex-wrap items-center gap-3 print:hidden">
+      <motion.p variants={item} className="mt-6 text-[11px] leading-relaxed text-graybrand">
+        Audit results are generated using{" "}
+        <span className="font-medium">Google PageSpeed Insights</span> and{" "}
+        <span className="font-medium">Claude AI</span>. Results are for informational purposes only
+        and may not reflect all aspects of your website&apos;s performance.
+      </motion.p>
+
+      <motion.div variants={item} className="mt-4 flex flex-wrap items-center gap-3 print:hidden">
         <button
           type="button"
           onClick={downloadPptx}
